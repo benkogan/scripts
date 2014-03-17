@@ -10,19 +10,15 @@
 cachedir="$HOME/scripts/.cache"
 cache="$HOME/scripts/.cache/weather.log"
 time=$(date +%s)
-modold=210 # 03 minutes 30 seconds
-modmid=180 # 03 minutes
-modnew=10  # 10 seconds
+modold=210 # 3 minutes 30 seconds
+modmid=180 # 3 minutes
+modnew=5   # 5 seconds
 
-# TODO: fix 2 issues:
-#       1. if clauses for mod- aren't working
-#       2. read isn't working
-
+# tmux
 if [[ "$1" == "-t" ]]; then
 
-    # tmux: If .cache dir doesn't exist, make it
+    # If .cache dir doesn't exist, make it
     if [[ ! -d "$cachedir" ]]; then
-        echo "TEST: cache dir created"
         mkdir "$cachedir"
         touch "$cache"
         error=$?
@@ -34,22 +30,20 @@ if [[ "$1" == "-t" ]]; then
 
     cachemod=$(stat -f%m "$cache") # Mod time of cache in sec since the epoch
     let diff=($time - $cachemod)   # Seconds from now since file was modified
-    echo "TEST: time is $time, cachemod is $cachemod, diff is $diff seconds"
-
-    # Load cached version
-    if [[ diff < modmid ]]; then
-        echo "TEST: cache loaded, should exit"
-        read weather < $cache
-        echo "w: $weather"
-        exit $?
 
     # First case:  on tmux startup; assumes this is the case if cache file
     #              hasn't been used for longer than modold
     # Second case: cache is newly created; should thus be empty
-    elif [[ diff > modold || diff < modnew ]]; then
+    if [[ $diff -gt $modold || $diff -lt $modnew ]]; then
         # TODO: maybe this is a bad idea? delays loading twice as long
         echo "loading"
-   fi
+
+    # Load cached version
+    elif [[ $diff -lt $modmid ]]; then
+        read weather < $cache
+        echo "$weather"
+        exit $?
+    fi
 fi
 
 # Get zipcode
@@ -76,7 +70,6 @@ echo "$weather"
 
 # tmux: add weather to cache file
 if [ "$1" == "-t" ]; then
-    echo "TEST: stores"
     echo "$weather" > "$cache"
 fi
 
